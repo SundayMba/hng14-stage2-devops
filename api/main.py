@@ -14,6 +14,7 @@ r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 @app.post("/jobs", status_code=httpStatus.HTTP_201_CREATED)
 def create_job():
     job_id = str(uuid.uuid4())
+    print(f"Creating job {job_id}")
     r.hset(f"job:{job_id}", "status", "queued")
     r.lpush("job", job_id)
     return {"job_id": job_id, "status": "queued"}
