@@ -1,0 +1,89 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE is required}
+    environment:
+      API_URL: ${FRONTEND_API_URL:?FRONTEND_API_URL is required}
+      PORT: ${FRONTEND_PORT:?FRONTEND_PORT is required}
+      HOST: ${FRONTEND_HOST:?FRONTEND_HOST is required}
+      REQUEST_TIMEOUT_MS: ${FRONTEND_REQUEST_TIMEOUT_MS:?FRONTEND_REQUEST_TIMEOUT_MS is required}
+    ports:
+      - "${FRONTEND_HOST_PORT:?FRONTEND_HOST_PORT is required}:${FRONTEND_PORT:?FRONTEND_PORT is required}"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - app-internal
+      - edge
+    restart: unless-stopped
+    cpus: ${FRONTEND_CPU_LIMIT:?FRONTEND_CPU_LIMIT is required}
+    mem_limit: ${FRONTEND_MEMORY_LIMIT:?FRONTEND_MEMORY_LIMIT is required}
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    image: ${API_IMAGE:?API_IMAGE is required}
+    environment:
+      API_PORT: ${API_PORT:?API_PORT is required}
+      REDIS_HOST: ${REDIS_HOST:?REDIS_HOST is required}
+      REDIS_PORT: ${REDIS_PORT:?REDIS_PORT is required}
+      REDIS_DB: ${REDIS_DB:?REDIS_DB is required}
+      JOB_QUEUE_NAME: ${JOB_QUEUE_NAME:?JOB_QUEUE_NAME is required}
+    ports:
+      - "${API_HOST_PORT:?API_HOST_PORT is required}:${API_PORT:?API_PORT is required}"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - app-internal
+      - edge
+    restart: unless-stopped
+    cpus: ${API_CPU_LIMIT:?API_CPU_LIMIT is required}
+    mem_limit: ${API_MEMORY_LIMIT:?API_MEMORY_LIMIT is required}
+
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    image: ${WORKER_IMAGE:?WORKER_IMAGE is required}
+    environment:
+      REDIS_HOST: ${REDIS_HOST:?REDIS_HOST is required}
+      REDIS_PORT: ${REDIS_PORT:?REDIS_PORT is required}
+      REDIS_DB: ${REDIS_DB:?REDIS_DB is required}
+      JOB_QUEUE_NAME: ${JOB_QUEUE_NAME:?JOB_QUEUE_NAME is required}
+      JOB_PROCESSING_DELAY_SECONDS: ${JOB_PROCESSING_DELAY_SECONDS:?JOB_PROCESSING_DELAY_SECONDS is required}
+      WORKER_HEARTBEAT_FILE: ${WORKER_HEARTBEAT_FILE:?WORKER_HEARTBEAT_FILE is required}
+    depends_on:
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    networks:
+      - app-internal
+    restart: unless-stopped
+    cpus: ${WORKER_CPU_LIMIT:?WORKER_CPU_LIMIT is required}
+    mem_limit: ${WORKER_MEMORY_LIMIT:?WORKER_MEMORY_LIMIT is required}
+
+  redis:
+    image: ${REDIS_IMAGE:?REDIS_IMAGE is required}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -p ${REDIS_PORT:?REDIS_PORT is required} ping | grep PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - app-internal
+    restart: unless-stopped
+    cpus: ${REDIS_CPU_LIMIT:?REDIS_CPU_LIMIT is required}
+    mem_limit: ${REDIS_MEMORY_LIMIT:?REDIS_MEMORY_LIMIT is required}
+
+networks:
+  app-internal:
+    name: ${DOCKER_INTERNAL_NETWORK_NAME:?DOCKER_INTERNAL_NETWORK_NAME is required}
+    internal: true
+  edge:
+    name: ${DOCKER_EDGE_NETWORK_NAME:?DOCKER_EDGE_NETWORK_NAME is required}
