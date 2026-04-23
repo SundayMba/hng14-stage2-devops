@@ -149,7 +149,25 @@ Deploy target requirements:
 
 - Docker must already be installed on the target host
 - the SSH user must be able to run Docker commands
-- ports `3000` and `8000` must be reachable if you keep the default `.env` values
+- the deploy verification runs over SSH on the target host, so `3000` does not need to be publicly exposed
+- if you use Nginx or another reverse proxy, point it at `http://127.0.0.1:${FRONTEND_HOST_PORT}`
+
+## Nginx Reverse Proxy
+
+The default `.env.example` binds the frontend and API host ports to `127.0.0.1`, which fits a reverse-proxy deployment on EC2.
+
+Example Nginx upstream for the frontend:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
 
 ## Stop The Stack
 

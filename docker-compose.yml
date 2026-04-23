@@ -10,7 +10,7 @@ services:
       HOST: ${FRONTEND_HOST:?FRONTEND_HOST is required}
       REQUEST_TIMEOUT_MS: ${FRONTEND_REQUEST_TIMEOUT_MS:?FRONTEND_REQUEST_TIMEOUT_MS is required}
     ports:
-      - "${FRONTEND_HOST_PORT:?FRONTEND_HOST_PORT is required}:${FRONTEND_PORT:?FRONTEND_PORT is required}"
+      - "${FRONTEND_BIND_ADDRESS:?FRONTEND_BIND_ADDRESS is required}:${FRONTEND_HOST_PORT:?FRONTEND_HOST_PORT is required}:${FRONTEND_PORT:?FRONTEND_PORT is required}"
     depends_on:
       api:
         condition: service_healthy
@@ -33,7 +33,7 @@ services:
       REDIS_DB: ${REDIS_DB:?REDIS_DB is required}
       JOB_QUEUE_NAME: ${JOB_QUEUE_NAME:?JOB_QUEUE_NAME is required}
     ports:
-      - "${API_HOST_PORT:?API_HOST_PORT is required}:${API_PORT:?API_PORT is required}"
+      - "${API_BIND_ADDRESS:?API_BIND_ADDRESS is required}:${API_HOST_PORT:?API_HOST_PORT is required}:${API_PORT:?API_PORT is required}"
     depends_on:
       redis:
         condition: service_healthy

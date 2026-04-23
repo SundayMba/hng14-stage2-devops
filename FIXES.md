@@ -82,13 +82,13 @@ Each entry lists the file, line numbers, the problem, and the change made.
   Problem: The browser poller assumed status lookups always succeeded and could render `undefined` status values.
   Fix: Added `res.ok` checks before rendering job status and show an error message on failed lookups.
 
-- `api/.dockerignore:1-5`
+- `api/.dockerignore:1-6`
   Problem: The API build context could have copied `.env`, virtualenvs, or caches into the image.
   Fix: Added Docker ignore rules for secrets and local Python artifacts.
 
-- `worker/.dockerignore:1-4`
+- `worker/.dockerignore:1-6`
   Problem: The worker build context could have copied local Python artifacts into the image.
-  Fix: Added Docker ignore rules for virtualenvs and caches.
+  Fix: Added Docker ignore rules for `.env` files, virtualenvs, and caches.
 
 - `frontend/.dockerignore:1-4`
   Problem: The frontend build context could have copied local env files and `node_modules` into the image.
@@ -108,11 +108,11 @@ Each entry lists the file, line numbers, the problem, and the change made.
 
 - `docker-compose.yml:1-89`
   Problem: There was no Compose definition for the full stack.
-  Fix: Added a Compose stack with env-driven runtime configuration, health-gated dependencies, CPU and memory limits for every service, Redis kept off the host, a named internal network for service-to-service traffic, and a host-facing edge network for frontend and API port publishing.
+  Fix: Added a Compose stack with env-driven runtime configuration, health-gated dependencies, CPU and memory limits for every service, Redis kept off the host, a named internal network for service-to-service traffic, and host port bindings controlled by environment variables so frontend and API can be bound to loopback behind Nginx.
 
-- `.env.example:1-39`
+- `.env.example:1-41`
   Problem: The repository did not document the variables required to run the Docker stack.
-  Fix: Added placeholder/default values for images, network names, ports, Redis settings, queue settings, worker heartbeat, and resource limits.
+  Fix: Added placeholder/default values for images, network names, host bind addresses, ports, Redis settings, queue settings, worker heartbeat, and resource limits.
 
 - `frontend/package.json:1-16`
   Problem: The frontend had no lint script or JavaScript lint dependency, so the required `eslint` stage could not run in CI.
@@ -150,14 +150,14 @@ Each entry lists the file, line numbers, the problem, and the change made.
   Problem: The repository had no repeatable integration test that could bring the full stack up, verify end-to-end job completion, and always tear the stack down.
   Fix: Added a Compose-based integration script with cleanup traps, HTTP readiness polling, job submission, status polling, and timeout handling.
 
-- `scripts/deploy.sh:1-274`
+- `scripts/deploy.sh:1-308`
   Problem: The repository had no deployment automation and no rolling update logic for replacing containers safely.
-  Fix: Added a scripted deployment that provisions networks, keeps Redis running, performs health-gated rolling updates for API, worker, and frontend with a 60-second timeout, and restores the previous API or frontend container if the replacement fails after the switchover point.
+  Fix: Added a scripted deployment that provisions networks, keeps Redis running, performs health-gated rolling updates for API, worker, and frontend with a 60-second timeout, binds published ports to the configured host address, and restores the previous API or frontend container if the replacement fails after the switchover point.
 
-- `.github/workflows/ci-cd.yml:1-311`
+- `.github/workflows/ci-cd.yml:1-349`
   Problem: The repository had no CI/CD pipeline implementing the required ordered stages.
-  Fix: Added a GitHub Actions workflow that runs `lint -> test -> build -> security scan -> integration test -> deploy`, pushes images to a local registry service, uploads coverage and SARIF artifacts, and deploys on pushes to `main`.
+  Fix: Added a GitHub Actions workflow that runs `lint -> test -> build -> security scan -> integration test -> deploy`, pushes images to a local registry service, uploads coverage and SARIF artifacts, performs explicit CRITICAL vulnerability gates, and verifies deploys over SSH on the target host instead of requiring public access to the app port.
 
-- `README.md:1-211`
+- `README.md:1-229`
   Problem: The README only described the earlier manual-run state and did not explain how to bring the full stack up with Docker.
-  Fix: Rewrote the README to cover prerequisites, env setup, Docker Compose startup, verification, local lint/test commands, CI/CD stages, deploy secrets, shutdown, network layout, and manual fallback commands.
+  Fix: Rewrote the README to cover prerequisites, env setup, Docker Compose startup, verification, local lint/test commands, CI/CD stages, deploy secrets, loopback binding for reverse-proxy deployments, shutdown, network layout, and manual fallback commands.

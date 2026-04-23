@@ -344,4 +344,6 @@ jobs:
           EOF
 
       - name: Verify deployed frontend
-        run: curl -fsS "http://${DEPLOY_HOST}:3000/health" >/dev/null
+        run: |
+          ssh -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "curl -fsS http://127.0.0.1:3000/health >/dev/null"

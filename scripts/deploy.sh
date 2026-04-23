@@ -126,7 +126,7 @@ start_api_container() {
   docker rm -f "${container_name}" >/dev/null 2>&1 || true
 
   if [[ -n "${publish_port}" ]]; then
-    args+=(-p "${publish_port}:${API_PORT}")
+    args+=(-p "${API_BIND_ADDRESS}:${publish_port}:${API_PORT}")
   fi
   if [[ -n "${alias_name}" ]]; then
     args+=(--network-alias "${alias_name}")
@@ -225,7 +225,7 @@ start_frontend_container() {
   docker rm -f "${container_name}" >/dev/null 2>&1 || true
 
   if [[ -n "${publish_port}" ]]; then
-    args+=(-p "${publish_port}:${FRONTEND_PORT}")
+    args+=(-p "${FRONTEND_BIND_ADDRESS}:${publish_port}:${FRONTEND_PORT}")
   fi
 
   args+=(
@@ -287,9 +287,11 @@ require_env JOB_QUEUE_NAME
 require_env JOB_PROCESSING_DELAY_SECONDS
 require_env WORKER_HEARTBEAT_FILE
 require_env API_PORT
+require_env API_BIND_ADDRESS
 require_env API_HOST_PORT
 require_env FRONTEND_PORT
 require_env FRONTEND_HOST
+require_env FRONTEND_BIND_ADDRESS
 require_env FRONTEND_HOST_PORT
 require_env FRONTEND_REQUEST_TIMEOUT_MS
 require_env DEPLOY_REDIS_CONTAINER_NAME
