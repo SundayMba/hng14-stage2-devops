@@ -108,9 +108,9 @@ Run the same checks used by CI:
 
 ```bash
 .venv/bin/flake8 api worker tests
-.venv/bin/pytest --cov=api --cov-report=term-missing --cov-report=xml tests/api
+.venv/bin/pytest --cov=api --cov-report=term-missing --cov-report=xml api/tests tests/api
 cd frontend && npm run lint && cd ..
-./scripts/integration-test.sh .env
+./integration.sh .env
 ```
 
 ## CI/CD Pipeline

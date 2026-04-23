@@ -20,6 +20,11 @@ services:
     restart: unless-stopped
     cpus: ${FRONTEND_CPU_LIMIT:?FRONTEND_CPU_LIMIT is required}
     mem_limit: ${FRONTEND_MEMORY_LIMIT:?FRONTEND_MEMORY_LIMIT is required}
+    deploy:
+      resources:
+        limits:
+          cpus: "${FRONTEND_CPU_LIMIT:?FRONTEND_CPU_LIMIT is required}"
+          memory: ${FRONTEND_MEMORY_LIMIT:?FRONTEND_MEMORY_LIMIT is required}
 
   api:
     build:
@@ -43,6 +48,11 @@ services:
     restart: unless-stopped
     cpus: ${API_CPU_LIMIT:?API_CPU_LIMIT is required}
     mem_limit: ${API_MEMORY_LIMIT:?API_MEMORY_LIMIT is required}
+    deploy:
+      resources:
+        limits:
+          cpus: "${API_CPU_LIMIT:?API_CPU_LIMIT is required}"
+          memory: ${API_MEMORY_LIMIT:?API_MEMORY_LIMIT is required}
 
   worker:
     build:
@@ -66,6 +76,11 @@ services:
     restart: unless-stopped
     cpus: ${WORKER_CPU_LIMIT:?WORKER_CPU_LIMIT is required}
     mem_limit: ${WORKER_MEMORY_LIMIT:?WORKER_MEMORY_LIMIT is required}
+    deploy:
+      resources:
+        limits:
+          cpus: "${WORKER_CPU_LIMIT:?WORKER_CPU_LIMIT is required}"
+          memory: ${WORKER_MEMORY_LIMIT:?WORKER_MEMORY_LIMIT is required}
 
   redis:
     image: ${REDIS_IMAGE:?REDIS_IMAGE is required}
@@ -80,6 +95,11 @@ services:
     restart: unless-stopped
     cpus: ${REDIS_CPU_LIMIT:?REDIS_CPU_LIMIT is required}
     mem_limit: ${REDIS_MEMORY_LIMIT:?REDIS_MEMORY_LIMIT is required}
+    deploy:
+      resources:
+        limits:
+          cpus: "${REDIS_CPU_LIMIT:?REDIS_CPU_LIMIT is required}"
+          memory: ${REDIS_MEMORY_LIMIT:?REDIS_MEMORY_LIMIT is required}
 
 networks:
   app-internal:

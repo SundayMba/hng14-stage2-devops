@@ -7,10 +7,10 @@ ENV VENV_PATH=/opt/venv \
 WORKDIR /build
 
 RUN python -m venv "${VENV_PATH}"
-COPY requirements.txt .
-RUN "${VENV_PATH}/bin/pip" install -r requirements.txt
+COPY requirements-prod.txt .
+RUN "${VENV_PATH}/bin/pip" install -r requirements-prod.txt
 
-FROM python:3.11-slim
+FROM python:3.11-slim AS runtime
 
 ENV VENV_PATH=/opt/venv \
     PATH="/opt/venv/bin:${PATH}" \

@@ -8,8 +8,8 @@ permissions:
   contents: read
 
 env:
-  PYTHON_VERSION: '3.11'
-  NODE_VERSION: '20'
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
   REGISTRY_HOST: localhost:5000
   FRONTEND_REPO: job-frontend
   API_REPO: job-api
@@ -20,13 +20,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - uses: actions/setup-node@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -41,24 +44,24 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Lint Python
-        run: flake8 api worker tests
+      - name: Run flake8
+        run: flake8 api worker tests api/tests
 
-      - name: Lint frontend
+      - name: Run eslint
         working-directory: frontend
-        run: npm run lint
+        run: npx eslint app.js
 
-      - name: Lint API Dockerfile
+      - name: Lint API Dockerfile with hadolint
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: api/Dockerfile
 
-      - name: Lint worker Dockerfile
+      - name: Lint worker Dockerfile with hadolint
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: worker/Dockerfile
 
-      - name: Lint frontend Dockerfile
+      - name: Lint frontend Dockerfile with hadolint
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: frontend/Dockerfile
@@ -68,19 +71,21 @@ jobs:
     needs: lint
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install test dependencies
+      - name: Install API test dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r api/requirements.txt -r requirements-dev.txt
 
-      - name: Run API unit tests
-        run: pytest --cov=api --cov-report=term-missing --cov-report=xml tests/api
+      - name: Run API unit tests with coverage
+        run: pytest --cov=api --cov-report=term-missing --cov-report=xml api/tests tests/api
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
@@ -99,7 +104,8 @@ jobs:
         ports:
           - 5000:5000
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Wait for local registry
         run: |
@@ -112,18 +118,51 @@ jobs:
           echo "Local registry did not become ready in time" >&2
           exit 1
 
-      - name: Build and tag images
-        run: |
-          docker build -t "${REGISTRY_HOST}/${FRONTEND_REPO}:${GITHUB_SHA}" -t "${REGISTRY_HOST}/${FRONTEND_REPO}:latest" frontend
-          docker build -t "${REGISTRY_HOST}/${API_REPO}:${GITHUB_SHA}" -t "${REGISTRY_HOST}/${API_REPO}:latest" api
-          docker build -t "${REGISTRY_HOST}/${WORKER_REPO}:${GITHUB_SHA}" -t "${REGISTRY_HOST}/${WORKER_REPO}:latest" worker
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Push images to local registry
+      - name: Build frontend image with layer cache
+        run: |
+          docker buildx build \
+            --cache-from type=gha,scope=frontend \
+            --cache-to type=gha,mode=max,scope=frontend \
+            --tag "${REGISTRY_HOST}/${FRONTEND_REPO}:${GITHUB_SHA}" \
+            --tag "${REGISTRY_HOST}/${FRONTEND_REPO}:latest" \
+            --load \
+            frontend
+
+      - name: Build API image with layer cache
+        run: |
+          docker buildx build \
+            --cache-from type=gha,scope=api \
+            --cache-to type=gha,mode=max,scope=api \
+            --tag "${REGISTRY_HOST}/${API_REPO}:${GITHUB_SHA}" \
+            --tag "${REGISTRY_HOST}/${API_REPO}:latest" \
+            --load \
+            api
+
+      - name: Build worker image with layer cache
+        run: |
+          docker buildx build \
+            --cache-from type=gha,scope=worker \
+            --cache-to type=gha,mode=max,scope=worker \
+            --tag "${REGISTRY_HOST}/${WORKER_REPO}:${GITHUB_SHA}" \
+            --tag "${REGISTRY_HOST}/${WORKER_REPO}:latest" \
+            --load \
+            worker
+
+      - name: Push frontend image to local registry
         run: |
           docker push "${REGISTRY_HOST}/${FRONTEND_REPO}:${GITHUB_SHA}"
           docker push "${REGISTRY_HOST}/${FRONTEND_REPO}:latest"
+
+      - name: Push API image to local registry
+        run: |
           docker push "${REGISTRY_HOST}/${API_REPO}:${GITHUB_SHA}"
           docker push "${REGISTRY_HOST}/${API_REPO}:latest"
+
+      - name: Push worker image to local registry
+        run: |
           docker push "${REGISTRY_HOST}/${WORKER_REPO}:${GITHUB_SHA}"
           docker push "${REGISTRY_HOST}/${WORKER_REPO}:latest"
 
@@ -146,7 +185,8 @@ jobs:
     needs: build
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Download built images
         uses: actions/download-artifact@v4
@@ -194,7 +234,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: trivy-sarif
-          path: '*.sarif'
+          path: "*.sarif"
           if-no-files-found: error
 
       - name: Gate frontend CRITICAL vulnerabilities
@@ -247,7 +287,8 @@ jobs:
     needs: security_scan
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Download built images
         uses: actions/download-artifact@v4
@@ -273,11 +314,22 @@ jobs:
             echo "WORKER_IMAGE=${REGISTRY_HOST}/${WORKER_REPO}:${GITHUB_SHA}"
           } >> .env.ci
 
-      - name: Run integration test
+      - name: Validate integration Compose config
+        run: docker compose --env-file .env.ci config >/dev/null
+
+      - name: Bring full stack up in CI
+        run: docker compose --env-file .env.ci up -d --no-build
+
+      - name: Run integration assertions
         run: |
-          chmod +x scripts/integration-test.sh
-          docker compose --env-file .env.ci config >/dev/null
-          INTEGRATION_NO_BUILD=true ./scripts/integration-test.sh .env.ci
+          chmod +x integration.sh integration-test.sh scripts/integration-test.sh
+          INTEGRATION_SKIP_COMPOSE_UP=true \
+          INTEGRATION_SKIP_CLEANUP=true \
+          ./integration.sh .env.ci
+
+      - name: Tear down integration stack
+        if: always()
+        run: docker compose --env-file .env.ci down -v --remove-orphans
 
   deploy:
     runs-on: ubuntu-latest
@@ -290,7 +342,8 @@ jobs:
       DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
       DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Download built images
         uses: actions/download-artifact@v4
@@ -343,7 +396,7 @@ jobs:
           ./deploy.sh
           EOF
 
-      - name: Verify deployed frontend
+      - name: Verify deployed frontend over SSH
         run: |
           ssh -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_HOST}" \
             "curl -fsS http://127.0.0.1:3000/health >/dev/null"
