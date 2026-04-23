@@ -202,6 +202,9 @@ jobs:
 
       - name: Enforce CRITICAL vulnerability gate
         run: |
+          echo "frontend scan outcome: ${{ steps.scan_frontend.outcome }}"
+          echo "api scan outcome: ${{ steps.scan_api.outcome }}"
+          echo "worker scan outcome: ${{ steps.scan_worker.outcome }}"
           [[ "${{ steps.scan_frontend.outcome }}" == "success" ]]
           [[ "${{ steps.scan_api.outcome }}" == "success" ]]
           [[ "${{ steps.scan_worker.outcome }}" == "success" ]]
