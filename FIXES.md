@@ -110,10 +110,54 @@ Each entry lists the file, line numbers, the problem, and the change made.
   Problem: There was no Compose definition for the full stack.
   Fix: Added a Compose stack with env-driven runtime configuration, health-gated dependencies, CPU and memory limits for every service, Redis kept off the host, a named internal network for service-to-service traffic, and a host-facing edge network for frontend and API port publishing.
 
-- `.env.example:1-34`
+- `.env.example:1-39`
   Problem: The repository did not document the variables required to run the Docker stack.
   Fix: Added placeholder/default values for images, network names, ports, Redis settings, queue settings, worker heartbeat, and resource limits.
 
-- `README.md:1-153`
+- `frontend/package.json:1-16`
+  Problem: The frontend had no lint script or JavaScript lint dependency, so the required `eslint` stage could not run in CI.
+  Fix: Added an `npm run lint` script and pinned `eslint` as a development dependency.
+
+- `frontend/package-lock.json:1-2214`
+  Problem: The lockfile did not include the new lint dependency, which would make `npm ci` fail after adding `eslint` to `package.json`.
+  Fix: Refreshed the lockfile so CI installs the exact frontend dependency graph, including dev dependencies.
+
+- `.eslintrc.json:1-13`
+  Problem: The repository had no ESLint configuration for the frontend service.
+  Fix: Added a minimal Node/browser ESLint configuration based on `eslint:recommended`.
+
+- `.flake8:1-3`
+  Problem: The repository had no Python lint configuration for the API and worker code.
+  Fix: Added a shared Flake8 configuration with project-specific excludes and line-length settings.
+
+- `requirements-dev.txt:1-4`
+  Problem: The repository had no shared development dependency manifest for linting and testing.
+  Fix: Added pinned versions of `flake8`, `pytest`, `pytest-cov`, and `httpx`.
+
+- `api/__init__.py:1`
+  Problem: The API directory was not an explicit Python package, which made imports less reliable in the test environment.
+  Fix: Added `api/__init__.py` so tests can import `api.main` consistently from the repository root.
+
+- `tests/conftest.py:1-7`
+  Problem: Pytest did not guarantee that the repository root would be on `sys.path`, which can break package imports in CI.
+  Fix: Added a small `conftest.py` bootstrap that inserts the repository root into `sys.path`.
+
+- `tests/api/test_main.py:1-60`
+  Problem: The repository had no automated API unit tests and no coverage artifact source for the required `test` stage.
+  Fix: Added mocked-Redis tests for job creation, missing-job handling, successful status reads, and health-check failure behavior.
+
+- `scripts/integration-test.sh:1-70`
+  Problem: The repository had no repeatable integration test that could bring the full stack up, verify end-to-end job completion, and always tear the stack down.
+  Fix: Added a Compose-based integration script with cleanup traps, HTTP readiness polling, job submission, status polling, and timeout handling.
+
+- `scripts/deploy.sh:1-274`
+  Problem: The repository had no deployment automation and no rolling update logic for replacing containers safely.
+  Fix: Added a scripted deployment that provisions networks, keeps Redis running, performs health-gated rolling updates for API, worker, and frontend with a 60-second timeout, and restores the previous API or frontend container if the replacement fails after the switchover point.
+
+- `.github/workflows/ci-cd.yml:1-311`
+  Problem: The repository had no CI/CD pipeline implementing the required ordered stages.
+  Fix: Added a GitHub Actions workflow that runs `lint -> test -> build -> security scan -> integration test -> deploy`, pushes images to a local registry service, uploads coverage and SARIF artifacts, and deploys on pushes to `main`.
+
+- `README.md:1-211`
   Problem: The README only described the earlier manual-run state and did not explain how to bring the full stack up with Docker.
-  Fix: Rewrote the README to cover prerequisites, env setup, Docker Compose startup, verification, shutdown, network layout, and manual fallback commands.
+  Fix: Rewrote the README to cover prerequisites, env setup, Docker Compose startup, verification, local lint/test commands, CI/CD stages, deploy secrets, shutdown, network layout, and manual fallback commands.

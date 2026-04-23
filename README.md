@@ -93,6 +93,64 @@ Check worker activity:
 docker compose logs worker
 ```
 
+## Local Quality Checks
+
+Install the shared development dependencies:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r api/requirements.txt -r worker/requirements.txt -r requirements-dev.txt
+cd frontend && npm ci && cd ..
+```
+
+Run the same checks used by CI:
+
+```bash
+.venv/bin/flake8 api worker tests
+.venv/bin/pytest --cov=api --cov-report=term-missing --cov-report=xml tests/api
+cd frontend && npm run lint && cd ..
+./scripts/integration-test.sh .env
+```
+
+## CI/CD Pipeline
+
+GitHub Actions runs the pipeline in this exact order:
+
+1. `lint`
+2. `test`
+3. `build`
+4. `security scan`
+5. `integration test`
+6. `deploy`
+
+Pipeline details:
+
+- `lint` runs `flake8`, `eslint`, and `hadolint`
+- `test` runs mocked-Redis API unit tests with coverage artifact upload
+- `build` builds all three images, tags them with `${GITHUB_SHA}` and `latest`, and pushes them to a local `registry:2` service container
+- `security scan` runs Trivy against all images, fails on any `CRITICAL` finding, and uploads SARIF results as artifacts
+- `integration test` boots the full stack in the runner and asserts a submitted job completes successfully
+- `deploy` runs only on pushes to `main` and uses `scripts/deploy.sh` for a health-gated rolling update with rollback to the previous container if the replacement fails within 60 seconds
+
+## GitHub Deploy Secrets
+
+Set these repository secrets before enabling deploys from `main`:
+
+- `DEPLOY_HOST`: public IP or hostname of the target server
+- `DEPLOY_USER`: SSH user on the target server
+- `DEPLOY_SSH_KEY`: private SSH key for that user
+
+Optional repository variable:
+
+- `DEPLOY_PATH`: remote directory used to copy the deploy payload. Defaults to `jobprocessor-deploy`.
+
+Deploy target requirements:
+
+- Docker must already be installed on the target host
+- the SSH user must be able to run Docker commands
+- ports `3000` and `8000` must be reachable if you keep the default `.env` values
+
 ## Stop The Stack
 
 ```bash

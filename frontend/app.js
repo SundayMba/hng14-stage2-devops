@@ -19,7 +19,7 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.post('/submit', async (req, res) => {
+app.post('/submit', async (_req, res) => {
   try {
     const response = await apiClient.post('/jobs');
     res.status(response.status).json(response.data);
