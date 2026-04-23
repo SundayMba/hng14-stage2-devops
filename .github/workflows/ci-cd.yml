@@ -160,9 +160,7 @@ jobs:
           gunzip -c artifacts/api-image.tar.gz | docker load
           gunzip -c artifacts/worker-image.tar.gz | docker load
 
-      - name: Scan frontend image
-        id: scan_frontend
-        continue-on-error: true
+      - name: Generate frontend SARIF
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: image
@@ -170,12 +168,9 @@ jobs:
           image-ref: ${{ env.REGISTRY_HOST }}/${{ env.FRONTEND_REPO }}:${{ github.sha }}
           format: sarif
           output: frontend-trivy.sarif
-          severity: CRITICAL
-          exit-code: 1
+          exit-code: 0
 
-      - name: Scan API image
-        id: scan_api
-        continue-on-error: true
+      - name: Generate API SARIF
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: image
@@ -183,12 +178,9 @@ jobs:
           image-ref: ${{ env.REGISTRY_HOST }}/${{ env.API_REPO }}:${{ github.sha }}
           format: sarif
           output: api-trivy.sarif
-          severity: CRITICAL
-          exit-code: 1
+          exit-code: 0
 
-      - name: Scan worker image
-        id: scan_worker
-        continue-on-error: true
+      - name: Generate worker SARIF
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: image
@@ -196,8 +188,7 @@ jobs:
           image-ref: ${{ env.REGISTRY_HOST }}/${{ env.WORKER_REPO }}:${{ github.sha }}
           format: sarif
           output: worker-trivy.sarif
-          severity: CRITICAL
-          exit-code: 1
+          exit-code: 0
 
       - name: Upload SARIF artifacts
         uses: actions/upload-artifact@v4
@@ -206,14 +197,50 @@ jobs:
           path: '*.sarif'
           if-no-files-found: error
 
+      - name: Gate frontend CRITICAL vulnerabilities
+        id: gate_frontend
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          scanners: vuln
+          image-ref: ${{ env.REGISTRY_HOST }}/${{ env.FRONTEND_REPO }}:${{ github.sha }}
+          format: table
+          severity: CRITICAL
+          exit-code: 1
+
+      - name: Gate API CRITICAL vulnerabilities
+        id: gate_api
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          scanners: vuln
+          image-ref: ${{ env.REGISTRY_HOST }}/${{ env.API_REPO }}:${{ github.sha }}
+          format: table
+          severity: CRITICAL
+          exit-code: 1
+
+      - name: Gate worker CRITICAL vulnerabilities
+        id: gate_worker
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          scanners: vuln
+          image-ref: ${{ env.REGISTRY_HOST }}/${{ env.WORKER_REPO }}:${{ github.sha }}
+          format: table
+          severity: CRITICAL
+          exit-code: 1
+
       - name: Enforce CRITICAL vulnerability gate
         run: |
-          echo "frontend scan outcome: ${{ steps.scan_frontend.outcome }}"
-          echo "api scan outcome: ${{ steps.scan_api.outcome }}"
-          echo "worker scan outcome: ${{ steps.scan_worker.outcome }}"
-          [[ "${{ steps.scan_frontend.outcome }}" == "success" ]]
-          [[ "${{ steps.scan_api.outcome }}" == "success" ]]
-          [[ "${{ steps.scan_worker.outcome }}" == "success" ]]
+          echo "frontend gate outcome: ${{ steps.gate_frontend.outcome }}"
+          echo "api gate outcome: ${{ steps.gate_api.outcome }}"
+          echo "worker gate outcome: ${{ steps.gate_worker.outcome }}"
+          [[ "${{ steps.gate_frontend.outcome }}" == "success" ]]
+          [[ "${{ steps.gate_api.outcome }}" == "success" ]]
+          [[ "${{ steps.gate_worker.outcome }}" == "success" ]]
 
   integration_test:
     runs-on: ubuntu-latest
